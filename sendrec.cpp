@@ -65,11 +65,6 @@ int udp_Broadcaster(std::string message){
     return 0;
 
 }
-    
-
-
-
-
 
 int udp_Sender(std::string message, int localPort, char * ip)
 {

@@ -8,44 +8,46 @@
 #include "Timer.h"
 #include <iostream>
 
-OrderManager orderManager(1);
+OrderManager orderManager(NUMBEROFELEVATORS);
 struct code_message packet;
-//State current_state;
+int input;
+int id;
+
 void listenForOrders(){
 	while(true){
-		switch(current_state){
+		switch(orderManager.current_state){
 			case MASTER:
 				orderManager.listen();
+				orderManager.orderElevator();
+				orderManager.listenCommand(id);
 				break;
 			case SLAVE:
-				orderManager.listen();
+				orderManager.listenCommand(id);
 				break;
-			}
+		}
 	}
 }
 
 void drive(){
 	while(true){
-		switch(current_state){
-			case SLAVE:
-				orderManager.manage();
-			break;
-		}
+		orderManager.manage(id);
 	}
 }
 
 void Sender(){
 	while(true){
-		switch(current_state){
+		switch(orderManager.current_state){
 			case MASTER:
 				usleep(250000);
-				orderManager.code();
+				orderManager.code(id);
 				udp_Broadcaster(orderManager.smsg);
+				//printf("%i%i%i%i%i%i%i%i\n",orderManager.orderBuffer[0][0],orderManager.orderBuffer[0][1],orderManager.orderBuffer[1][0], orderManager.orderBuffer[1][1], orderManager.orderBuffer[2][0], orderManager.orderBuffer[2][1], orderManager.orderBuffer[3][0], orderManager.orderBuffer[3][1]);
+				//printf("CF: %i, SI: %i, DI %i\n", orderManager.elevators[id].currentFloor, orderManager.elevators[id].getStateIndex(), orderManager.elevators[id].directionIndex);
 				break;
 			case SLAVE:
-				orderManager.code();
-				udp_Sender(orderManager.smsg, 20019, packet.rip);
 				usleep(250000);
+				orderManager.code(id);
+				udp_Sender(orderManager.smsg, MASTERPORT, packet.rip);
 				break;
 		}
 	}
@@ -53,17 +55,17 @@ void Sender(){
 
 void Reciever(){
 	while(true){
-		switch(current_state){
+		switch(orderManager.current_state){
 			case MASTER:
 				packet = udp_Reciever();
 				//printf("Message: %s\n", packet.data);
-				orderManager.decode(packet.data);
-				printf("CF: %i, SI: %i, DI %i\n", orderManager.elevators[0].currentFloor, orderManager.elevators[0].stateIndex, orderManager.elevators[0].directionIndex);
+				orderManager.decode(packet.data, id);
+				printf("CF: %i, SI: %i, DI %i\n", orderManager.elevators[id].currentFloor, orderManager.elevators[id].getStateIndex(), orderManager.elevators[id].directionIndex);
 				break;
 			case SLAVE:
 				packet = udp_recieve_broadcast();
 				//printf("Message: %s\n", packet.data);
-				orderManager.decode(packet.data);
+				orderManager.decode(packet.data, id);
 				break;
 		}
 	}
@@ -71,7 +73,7 @@ void Reciever(){
 
 int main() {
 	elev_init();
-	udp_init(20019);
+	udp_init(MASTERPORT);
 	printf("PROGRAM STARTED\n");
 	/*int nBytes = 0;
 	Timer timer;
@@ -85,28 +87,25 @@ int main() {
 		}
 	}
 	printf("complete");*/
-	
-	int input;
 
 	printf("I AM\n");
 
 	std::cin >> input;
+	id = input - 1;
 
 	switch(input){
-	case 1:
-	current_state = MASTER;
-	break;
-	case 2:
-	current_state = SLAVE;
-	break;
+		case 1:
+			orderManager.current_state = MASTER;
+			break;
+		default:
+			orderManager.current_state = SLAVE;
+			break;
 	}
-	if(current_state == SLAVE){packet = udp_recieve_broadcast();}
 
     std::thread t1(listenForOrders);
     std::thread t2(drive);
     std::thread t3(Sender);
     std::thread t4(Reciever);
-
 
     t1.join();
     t2.join();
