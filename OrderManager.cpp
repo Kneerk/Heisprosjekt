@@ -21,10 +21,7 @@
 
 using namespace std;
 
-OrderManager::OrderManager(int number){
-	nElevators = number;
-	addElevators(nElevators);
-
+OrderManager::OrderManager(){
 	for(int i = 0; i < N_FLOORS; i++){
 		for(int j = 0; j < N_BUTTONS; j++){
 			buttonMatrix[i][j] = 0;
@@ -34,7 +31,8 @@ OrderManager::OrderManager(int number){
 	}
 }
 
-void OrderManager::addElevators(int nElevators){
+void OrderManager::addElevators(int number){
+	nElevators = number;
 	for(int i = 0; i < nElevators; i++){
 		Elevator newElevator(i);
 		elevators.push_back(newElevator);
@@ -42,7 +40,6 @@ void OrderManager::addElevators(int nElevators){
 }
 
 void OrderManager::listen(){
-    //printf("%s\n", toString(elevators[0].getCurrentState()));
 	for(int i = 0; i < N_FLOORS; i++){
 		for(int j = 0; j < N_BUTTONS; j++){
 
@@ -56,11 +53,8 @@ void OrderManager::listen(){
 				bufferMatrix[i][j] = 0;
 			}
 		}
-	}		//Clear
-	clearOrders();
-	for(int id = 0; id < nElevators; id++){
-		elevators[id].clearOrder();
-	}	
+	}
+		
 }
 
 void OrderManager::orderElevator(){
@@ -71,6 +65,7 @@ void OrderManager::orderElevator(){
 		updateOrderBuffer();
 		updateCostMatrix();
 		findLowestCost(id);
+		findLowestActiveCost(id);
 		if ((fl != -1) && (bu != -1)){
 			identity = id;
 			cost = elevators[identity].costMatrix[fl][bu];
@@ -82,6 +77,9 @@ void OrderManager::orderElevator(){
 
 			}
 			if((cost < COSTBORDER) && (temp == cost)){
+				elevators[identity].elevatorOrderMatrix[fl][bu] = orderBuffer[fl][bu];
+			}
+			else if((cost < elevators[identity].costActiveMatrix[fl2][bu2]) && (temp == cost)){
 				elevators[identity].elevatorOrderMatrix[fl][bu] = orderBuffer[fl][bu];
 			}
 			else if ((cost > 0) && elevators[identity].checkifOrderEmpty() && (temp == cost)){
@@ -96,9 +94,11 @@ void OrderManager::listenCommand(int id){
 	for(int i = 0; i < N_FLOORS; i++){
 		for(int j = 0; j < N_BUTTONS; j++){
 			//Set
-			if(elev_get_button_signal((elev_button_type_t)j, i)){
+			if(elev_get_button_signal((elev_button_type_t)2, i)){
 				elevators[id].elevatorOrderMatrix[i][2] = 1;
 				buttonMatrix[i][2] = 1;
+			}
+			if(elev_get_button_signal((elev_button_type_t)j, i) && current_state == SLAVE){
 				bufferMatrix[i][j] = 1;
 			}
 
@@ -112,6 +112,14 @@ void OrderManager::listenCommand(int id){
 				elevators[id].elevatorOrderMatrix[elev_get_floor_sensor_signal()][2] = 0;
 				buttonMatrix[elev_get_floor_sensor_signal()][2] = 0;
 			}
+		}
+	}
+
+	if(current_state == MASTER){
+		//Clear
+		clearOrders();
+		for(int id = 0; id < nElevators; id++){
+			elevators[id].clearOrder();
 		}
 	}
 }
@@ -178,6 +186,28 @@ void OrderManager::updateCostMatrix(){
 		for(int j = 0; j < N_BUTTONS-1; j++){
 			for(int id = 0; id < nElevators; id++){
 				elevators[id].costMatrix[i][j] = costFunction(id, i, (elev_button_type_t)j)*orderBuffer[i][j];
+				elevators[id].costActiveMatrix[i][j] = costFunction(id, i, (elev_button_type_t)j)*elevators[id].elevatorOrderMatrix[i][j];
+			}
+		}
+	}
+}
+void OrderManager::findLowestActiveCost(int id){
+	fl2 = -1;
+	bu2 = -1;
+	int cost = 0;
+	for(int i = 0; i < N_FLOORS; i++){
+		for(int j = 0; j < N_BUTTONS-1; j++){
+			if (cost == 0){
+				cost = elevators[id].costActiveMatrix[i][j];
+				if (cost != 0){
+					fl2 = i;
+					bu2 = j;
+				}
+			}
+			else if ((elevators[id].costActiveMatrix[i][j] < cost) && (elevators[id].costActiveMatrix[i][j] != 0)){
+				cost = elevators[id].costActiveMatrix[i][j];
+				fl2 = i;
+				bu2 = j;
 			}
 		}
 	}
@@ -217,11 +247,20 @@ void OrderManager::clearOrders(){
 			else if((elevators[id].nextOrder > elevators[id].currentFloor) && (elevators[id].directionIndex == 1)){
 				buttonMatrix[elevators[id].currentFloor][0] = 0;
 			}
+
+			//Highest lowest
+			if((elevators[id].currentFloor == (N_FLOORS - 1)) && (elevators[id].directionIndex == 0)){
+				buttonMatrix[elevators[id].currentFloor][1] = 0;
+			}
+			else if((elevators[id].currentFloor == 0) && (elevators[id].directionIndex == 1)){
+				buttonMatrix[elevators[id].currentFloor][0] = 0;
+			}
 		}
 
-		if(elevators[id].currentState == IDLE || elevators[id].currentFloor == 0 || elevators[id].currentFloor == N_FLOORS - 1){
+		if(elevators[id].currentState == IDLE){
 			buttonMatrix[elevators[id].currentFloor][0] = 0;
 			buttonMatrix[elevators[id].currentFloor][1] = 0;
+		
 		}
 	}
 }
@@ -243,7 +282,6 @@ void OrderManager::code(int id){
     			}
     		}
     		
-    	//printf("CODE: %s\n", msg.c_str());
     	break;
     	case SLAVE:
     		smsg = "R";

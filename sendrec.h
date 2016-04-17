@@ -12,8 +12,6 @@
 #define BUFLEN 512  //Max length of buffer
 #define BROADCASTPORT 8000   //The Broadcastport
 #define MASTERPORT 20019 //The localport
-//#define OURADDRESS "129.241.187.157"
-//#define SADDRESS "129.241.187.155"
 
 extern int bsocket, lsocket;
 

@@ -8,14 +8,15 @@
 
 
 #define COSTBORDER 5
-#define NUMBEROFELEVATORS 3
 
 enum State{MASTER, SLAVE};
 
 class OrderManager{
 private:
-	int fl;
-	int bu;
+	int fl; //floor
+	int bu; //button
+	int fl2;
+	int bu2;
 public:
 	int nElevators;
 	State current_state;
@@ -27,7 +28,7 @@ public:
 	std::string smsg;
 	void code(int);
 	void decode(std::string, int);
-	OrderManager(int);
+	OrderManager();
 	void listen();
 	void orderElevator();
 	void listenCommand(int);
@@ -36,6 +37,7 @@ public:
 	void updateOrderBuffer();
 	void updateCostMatrix();
 	void findLowestCost(int);
+	void findLowestActiveCost(int);
 	void manage(int);
 	void addElevators(int);
 	bool checkifOrderEmpty(int);

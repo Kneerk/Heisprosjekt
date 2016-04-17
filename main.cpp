@@ -8,10 +8,12 @@
 #include "Timer.h"
 #include <iostream>
 
-OrderManager orderManager(NUMBEROFELEVATORS);
 struct code_message packet;
 int input;
+int nElevators;
 int id;
+
+OrderManager orderManager;
 
 void listenForOrders(){
 	while(true){
@@ -41,8 +43,6 @@ void Sender(){
 				usleep(250000);
 				orderManager.code(id);
 				udp_Broadcaster(orderManager.smsg);
-				//printf("%i%i%i%i%i%i%i%i\n",orderManager.orderBuffer[0][0],orderManager.orderBuffer[0][1],orderManager.orderBuffer[1][0], orderManager.orderBuffer[1][1], orderManager.orderBuffer[2][0], orderManager.orderBuffer[2][1], orderManager.orderBuffer[3][0], orderManager.orderBuffer[3][1]);
-				//printf("CF: %i, SI: %i, DI %i\n", orderManager.elevators[id].currentFloor, orderManager.elevators[id].getStateIndex(), orderManager.elevators[id].directionIndex);
 				break;
 			case SLAVE:
 				usleep(250000);
@@ -58,40 +58,33 @@ void Reciever(){
 		switch(orderManager.current_state){
 			case MASTER:
 				packet = udp_Reciever();
-				//printf("Message: %s\n", packet.data);
 				orderManager.decode(packet.data, id);
 				printf("CF: %i, SI: %i, DI %i\n", orderManager.elevators[id].currentFloor, orderManager.elevators[id].getStateIndex(), orderManager.elevators[id].directionIndex);
 				break;
 			case SLAVE:
 				packet = udp_recieve_broadcast();
-				//printf("Message: %s\n", packet.data);
 				orderManager.decode(packet.data, id);
 				break;
 		}
 	}
 }
 
+
 int main() {
 	elev_init();
 	udp_init(MASTERPORT);
 	printf("PROGRAM STARTED\n");
-	/*int nBytes = 0;
-	Timer timer;
-	timer.start();
-	current_state = MASTER;
-	while(!timer.is_time_out(3)){
-		nBytes = Bytes();
-		if(nBytes > 0){
-			current_state = SLAVE;
-			packet = udp_recieve_broadcast();
-		}
-	}
-	printf("complete");*/
+
+	printf("How many elevators?\n");
+
+	std::cin >> nElevators;
 
 	printf("I AM\n");
 
 	std::cin >> input;
 	id = input - 1;
+
+	orderManager.addElevators(nElevators);
 
 	switch(input){
 		case 1:

@@ -20,20 +20,18 @@ Elevator::Elevator(int id){
 	directionIndex = 1;
 	currentFloor = 0;
 	orders.push_back(0);
-//	code = udp_Reciever();
 
 
 	for(int i = 0; i < N_FLOORS; i++){
 		for(int j = 0; j < N_BUTTONS; j++){
 			elevatorOrderMatrix[i][j] = 0;
 			costMatrix[i][j] = 0;
+			costActiveMatrix[i][j] = 0;
 		}
 	}
 }
 
 void Elevator::run(){
-	//printOrders("Orders: ", orders);
-	//printf("%s\n", toString(currentState));
 	//Elevator state
 	switch(currentState){
 		case UP:
@@ -64,22 +62,37 @@ void Elevator::run(){
 			break;
 
 		case OPEN:
+			//Switch dir top and bottom
+			if(currentFloor == 0){
+				direction = UP;
+				directionIndex = 0;
+			}
+			else if(currentFloor == (N_FLOORS - 1)){
+				direction = DOWN;
+				directionIndex = 1;
+			}
+
+			//Go in the dir of the next order
 			if(getNextOrder() > currentFloor){
 				toUp();
 			}
 			else if(getNextOrder() < currentFloor){
 				toDown();
 			}
+
+
 			else if((direction == UP) && (isOver(ordersOnHoldUp) || isOver(ordersOnHoldDown))){
 				if(!isOver(ordersOnHoldUp)){orders.push_back(ordersOnHoldDown.front());}
 				toUp();
-			}
-			else if((direction == UP) && isUnder(ordersOnHoldDown)){
-				if(isCurrentFloor(ordersOnHoldDown)){ordersOnHoldDown.pop_front();}
-				toDown();
-			}
+			}	
 			else if((direction == DOWN) && (isUnder(ordersOnHoldDown) || isUnder(ordersOnHoldUp))){
 				if(!isUnder(ordersOnHoldDown)){orders.push_back(ordersOnHoldUp.front());}
+				toDown();
+			}
+
+			//Turns, removes the floor you are turning on from the on hold lists
+			else if((direction == UP) && isUnder(ordersOnHoldDown)){
+				if(isCurrentFloor(ordersOnHoldDown)){ordersOnHoldDown.pop_front();}
 				toDown();
 			}
 			else if((direction == DOWN) && isOver(ordersOnHoldUp)){
@@ -109,13 +122,12 @@ void Elevator::toUp(){
 
 		case OPEN:
 			extendOrdersUp();
-			elev_set_door_open_lamp(0);
 			break;
 
 	}
 	direction = UP;
-	directionIndex = 0;
 	currentState = UP;
+	directionIndex = 0;
 }
 
 void Elevator::toDown(){
@@ -139,8 +151,8 @@ void Elevator::toDown(){
 
 	}
 	direction = DOWN;
-	directionIndex = 1;
 	currentState = DOWN;
+	directionIndex = 1;
 }
 
 void Elevator::toIdle(){
@@ -258,7 +270,6 @@ bool Elevator::driveToFloor(){
 			extendOrdersUp();
 		}
 		else if(currentState == DOWN){
-			//printf("hei\n");
 			extendOrdersDown();
 		}
 

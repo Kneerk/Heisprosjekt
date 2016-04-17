@@ -12,6 +12,7 @@ class Elevator{
 	public:
 		unsigned int elevatorOrderMatrix[N_FLOORS][N_BUTTONS];
 		unsigned int costMatrix[N_FLOORS][N_BUTTONS];
+		unsigned int costActiveMatrix[N_FLOORS][N_BUTTONS];
 		std::deque<int> orders;
 		std::deque<int> ordersOnHoldUp;
 		std::deque<int> ordersOnHoldDown;
@@ -22,12 +23,6 @@ class Elevator{
 		int stateIndex;
 		int directionIndex;
 		int nextOrder;
-		/*struct code_message code{
-			char * elev_ip;
-			int port;
-			char * data;
-			int length;
-		};*/
 
 		Elevator(int);
 		void run();
